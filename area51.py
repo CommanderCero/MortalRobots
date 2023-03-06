@@ -15,6 +15,7 @@ And some drawing code that extends the shape classes.
 kne
 """
 import pygame
+import numpy as np
 from pygame.locals import (QUIT, KEYDOWN, K_ESCAPE)
 
 import Box2D  # The main library
@@ -38,47 +39,31 @@ clock = pygame.time.Clock()
 
 # --- pybox2d world setup ---
 # Create the world
-world = world(gravity=(0, -10), doSleep=True)
+world = world(gravity=(0, 9.71), doSleep=True)
 
 # And a static body to hold the ground shape
 ground_body = world.CreateStaticBody(
-    position=(0, 0),
+    position=(0, 24),
     shapes=polygonShape(box=(50, 1)),
 )
 
-# Create a couple dynamic bodies
-body = world.CreateDynamicBody(position=(20, 45))
-circle = body.CreateCircleFixture(radius=0.5, density=1, friction=0.3)
-
-genome = TestGenome()
-genome_body = genome.create_body(world, (10, 15))
+genome_body = None
 
 colors = {
     staticBody: (255, 255, 255, 255),
-    dynamicBody: (127, 127, 127, 255),
+    dynamicBody: pygame.Color("#2596be"),
 }
 
 # Let's play with extending the shape classes to draw for us.
 
 
-def my_draw_polygon(polygon, body, fixture):
+def my_draw_polygon(polygon, body, fixture, i):
     vertices = [(body.transform * v) * PPM for v in polygon.vertices]
-    vertices = [(v[0], SCREEN_HEIGHT - v[1]) for v in vertices]
-    pygame.draw.polygon(screen, colors[body.type], vertices)
+    pygame.draw.polygon(screen, colors[i], vertices)
 polygonShape.draw = my_draw_polygon
 
-
-def my_draw_circle(circle, body, fixture):
-    position = body.transform * circle.pos * PPM
-    position = (position[0], SCREEN_HEIGHT - position[1])
-    pygame.draw.circle(screen, colors[body.type], [int(
-        x) for x in position], int(circle.radius * PPM))
-    # Note: Python 3.x will enforce that pygame get the integers it requests,
-    #       and it will not convert from float.
-circleShape.draw = my_draw_circle
-
 # --- main game loop ---
-
+colors = []
 running = True
 while running:
     # Check the event queue
@@ -86,18 +71,24 @@ while running:
         if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
             # The user closed the window or pressed escape
             running = False
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_r:
-                world.DestroyBody(genome_body)
-                genome = TestGenome()
+        if genome_body is None or event.type == pygame.KEYDOWN:
+            if genome_body is None or event.key == pygame.K_r:
+                if genome_body is not None:
+                    world.DestroyBody(genome_body)
+                genome = TestGenome(body_vertices=10)
                 genome_body = genome.create_body(world, (10, 15))
+                
+                for body in world.bodies:
+                    for fixture in body.fixtures:
+                        colors.append(list(np.random.choice(range(256), size=3)))
 
     screen.fill((0, 0, 0, 0))
     # Draw the world
+    i = 0
     for body in world.bodies:
         for fixture in body.fixtures:
-            fixture.shape.draw(body, fixture)
-
+            fixture.shape.draw(body, fixture, i)
+            i+=1
     # Make Box2D simulate the physics of our world for one step.
     world.Step(TIME_STEP, 10, 10)
 

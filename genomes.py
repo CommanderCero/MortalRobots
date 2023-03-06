@@ -11,12 +11,20 @@ class TestGenome:
     
     def create_body(self, world: b2World, position):
         vertices = []
-        for m, a in zip(self.magnitudes, self.angles):
+        for m, a in sorted(zip(self.magnitudes, self.angles), key=lambda x: x[1]):
             vec = Vector2(1, 0)
             vec = vec.rotate(math.degrees(a))
             vec *= m
             vertices.append(tuple(vec))
         
+        
         body = world.CreateDynamicBody(position=position)
-        box = body.CreatePolygonFixture(vertices=vertices, density=1, friction=0.3)
+        for i in range(len(vertices)):
+            self._create_body_part(body, vertices[i], vertices[(i+1) % len(vertices)], density=1)
+        #for v1, v2 in zip(vertices[:-1], vertices[1:]):
+        #    self._create_body_part(body, v1, v2, density=1)
         return body
+    
+    def _create_body_part(self, body, v1, v2, density):
+        vertices = [v1, v2, (0, 0)]
+        body.CreatePolygonFixture(vertices=vertices, density=density)
