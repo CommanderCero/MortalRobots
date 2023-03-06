@@ -101,7 +101,7 @@ while running:
                     for fixture in body.fixtures:
                         colors.append(list(np.random.choice(range(256), size=3)))
 
-    screen.fill((0, 0, 0, 0))
+    screen.fill((200, 200, 200, 200))
     # Draw the world
     i = 0
     for body in world.bodies:

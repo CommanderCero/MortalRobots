@@ -13,22 +13,24 @@ class TestGenome:
         self.magnitudes = np.random.uniform(0.1, 4, size=body_vertices)
         self.angles = np.random.uniform(0, 1, size=body_vertices)
         self.wheels_flags = np.random.randint(0, 2, size=body_vertices)
+        self.wheel_motor_speed = 10.0
+        self.wheels_radius = 0.5
         self.fitness = 0
-    
+
     def mutate(self):
         mutation_rate = 0.1
         mag_indices = np.where(np.random.uniform(0, 1, size=len(self.magnitudes)) < mutation_rate)
         angle_indices = np.where(np.random.uniform(0, 1, size=len(self.angles)) < mutation_rate)
-        
+
         self.magnitudes[mag_indices] = np.random.uniform(0.1, 4, size=len(self.magnitudes[mag_indices]))
         self.angles[angle_indices] = np.random.uniform(0, 1, size=len(self.angles[angle_indices]))
-    
+
     def crossover(self, other: "TestGenome"):
         #t = np.random.uniform(0, 1)
         t = np.random.uniform(0, 1, size=len(self.magnitudes))
         new_magnitudes = t * self.magnitudes + (1 - t) * other.magnitudes
         new_angles = t * self.angles + (1 - t) * other.angles
-        
+
         self.magnitudes = (1 - t) * self.magnitudes + t * other.magnitudes
         self.angles = (1 - t) * self.angles + t * other.angles
         other.magnitudes = new_magnitudes
@@ -49,8 +51,16 @@ class TestGenome:
         body = world.CreateDynamicBody(position=position)
         for i in range(len(vertices)):
             self._create_body_part(body, vertices[i], vertices[(i+1) % len(vertices)], density=1)
+        self.wheels, wheels_bodies = self._create_wheels_bodies(world, body, vertices)
 
-        self.wheels = []
+        return body, wheels_bodies
+
+    def _create_body_part(self, body, v1, v2, density):
+        vertices = [v1, v2, (0, 0)]
+        body.CreatePolygonFixture(vertices=vertices, density=density)
+
+    def _create_wheels_bodies(self, world, body, vertices):
+        wheels = []
         wheels_bodies = []
         for wheel_ind, is_wheel in enumerate(self.wheels_flags):
             if is_wheel == 0:
@@ -62,7 +72,7 @@ class TestGenome:
                 position=body.worldCenter + b2Vec2(vertex[0], vertex[1]),
                 # angle=angle
             )
-            wheel_shape = b2CircleShape(radius=0.5)
+            wheel_shape = b2CircleShape(radius=self.wheels_radius)
             wheel_fixture = b2FixtureDef(shape=wheel_shape, density=1.0)
             wheel_body.CreateFixture(wheel_fixture)
             wheel_joint = world.CreateRevoluteJoint(
@@ -75,15 +85,11 @@ class TestGenome:
                 motorSpeed=0,
             )
             wheels_bodies.append(wheel_body)
-            self.wheels.append((wheel_body, wheel_joint))
+            wheels.append((wheel_body, wheel_joint))
 
-        return body, wheels_bodies
-
-    def _create_body_part(self, body, v1, v2, density):
-        vertices = [v1, v2, (0, 0)]
-        body.CreatePolygonFixture(vertices=vertices, density=density)
+        return wheels, wheels_bodies
 
     def update(self):
         for wheel in self.wheels:
             if wheel is not None:
-                wheel[1].motorSpeed = 10
+                wheel[1].motorSpeed = self.wheel_motor_speed
