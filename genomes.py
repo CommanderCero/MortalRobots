@@ -78,7 +78,9 @@ class TestGenome:
             wheel_joint = world.CreateRevoluteJoint(
                 bodyA=body,
                 bodyB=wheel_body,
-                anchor=wheel_body.position,
+                # anchor=wheel_body.position,
+                localAnchorA=b2Vec2(vertex[0], vertex[1]),
+                localAnchorB=(0, 0),
                 collideConnected=False,
                 enableMotor=True,
                 maxMotorTorque=100,
