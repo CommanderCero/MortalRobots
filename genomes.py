@@ -12,6 +12,7 @@ class TestGenome:
     def __init__(self, body_vertices=10):
         self.magnitudes = np.random.uniform(0.1, 4, size=body_vertices)
         self.angles = np.random.uniform(0, 1, size=body_vertices)
+        self.wheels_flags = np.random.randint(0, 2, size=body_vertices)
         self.fitness = 0
     
     def mutate(self):
@@ -32,7 +33,6 @@ class TestGenome:
         self.angles = (1 - t) * self.angles + t * other.angles
         other.magnitudes = new_magnitudes
         other.angles = new_angles
-        self.wheels_flags = np.random.randint(0, 2, size=body_vertices)
 
     def create_body(self, world: b2World, position):
         vertices = []
@@ -45,15 +45,40 @@ class TestGenome:
             vec = vec.rotate((running_angle_sum / total_angle_sum) * 360)
             vec *= m
             vertices.append(tuple(vec))
-        
-        
+
         body = world.CreateDynamicBody(position=position)
         for i in range(len(vertices)):
             self._create_body_part(body, vertices[i], vertices[(i+1) % len(vertices)], density=1)
-        #for v1, v2 in zip(vertices[:-1], vertices[1:]):
-        #    self._create_body_part(body, v1, v2, density=1)
-        return body
-    
+
+        self.wheels = []
+        wheels_bodies = []
+        for wheel_ind, is_wheel in enumerate(self.wheels_flags):
+            if is_wheel == 0:
+                continue
+
+            vertex = vertices[wheel_ind]
+            angle = 0  # np.random.uniform(0, 2 * math.pi)
+            wheel_body = world.CreateDynamicBody(
+                position=body.worldCenter + b2Vec2(vertex[0], vertex[1]),
+                # angle=angle
+            )
+            wheel_shape = b2CircleShape(radius=0.5)
+            wheel_fixture = b2FixtureDef(shape=wheel_shape, density=1.0)
+            wheel_body.CreateFixture(wheel_fixture)
+            wheel_joint = world.CreateRevoluteJoint(
+                bodyA=body,
+                bodyB=wheel_body,
+                anchor=wheel_body.position,
+                collideConnected=False,
+                enableMotor=True,
+                maxMotorTorque=100,
+                motorSpeed=0,
+            )
+            wheels_bodies.append(wheel_body)
+            self.wheels.append((wheel_body, wheel_joint))
+
+        return body, wheels_bodies
+
     def _create_body_part(self, body, v1, v2, density):
         vertices = [v1, v2, (0, 0)]
         body.CreatePolygonFixture(vertices=vertices, density=density)

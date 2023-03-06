@@ -94,6 +94,7 @@ while running:
                         world.DestroyBody(b)
 
                 genome = TestGenome(body_vertices=10)
+                genome.mutate()
                 genome_body, wheels_bodies = genome.create_body(world, (10, 15))
 
                 for body in world.bodies:
