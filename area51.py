@@ -49,6 +49,7 @@ ground_body = world.CreateStaticBody(
 )
 
 genome_body = None
+wheels_bodies = []
 
 colors = {
     staticBody: (255, 255, 255, 255),
@@ -59,10 +60,22 @@ colors = {
 
 creature = Creature.create_test_creature(world, (20, 15))
 
+
 def my_draw_polygon(polygon, body, fixture, i):
     vertices = [(body.transform * v) * PPM for v in polygon.vertices]
     pygame.draw.polygon(screen, colors[i], vertices)
+
+
+def my_draw_circle(circle, body, fixture, i):
+    position = body.transform * circle.pos * PPM
+    # position = (position[0], SCREEN_HEIGHT - position[1])
+    pygame.draw.circle(screen, colors[body.type], [int(
+        x) for x in position], int(circle.radius * PPM))
+
+
+circleShape.draw = my_draw_circle
 polygonShape.draw = my_draw_polygon
+# circleShape.draw = my_draw_polygon
 
 # --- main game loop ---
 colors = []
@@ -77,9 +90,12 @@ while running:
             if genome_body is None or event.key == pygame.K_r:
                 if genome_body is not None:
                     world.DestroyBody(genome_body)
+                    for b in wheels_bodies:
+                        world.DestroyBody(b)
+
                 genome = TestGenome(body_vertices=10)
-                genome_body = genome.create_body(world, (10, 15))
-                
+                genome_body, wheels_bodies = genome.create_body(world, (10, 15))
+
                 for body in world.bodies:
                     for fixture in body.fixtures:
                         colors.append(list(np.random.choice(range(256), size=3)))
@@ -91,6 +107,7 @@ while running:
         for fixture in body.fixtures:
             fixture.shape.draw(body, fixture, i)
             i+=1
+    genome.update()
     creature.render(screen)
     # Make Box2D simulate the physics of our world for one step.
     world.Step(TIME_STEP, 10, 10)
