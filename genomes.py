@@ -7,13 +7,17 @@ from pygame import Vector2
 class TestGenome:
     def __init__(self, body_vertices=10):
         self.magnitudes = np.random.uniform(0.1, 4, size=body_vertices)
-        self.angles = np.random.uniform(0, 2 * math.pi, size=body_vertices)
+        self.angles = np.random.uniform(0, 1, size=body_vertices)
     
     def create_body(self, world: b2World, position):
         vertices = []
-        for m, a in sorted(zip(self.magnitudes, self.angles), key=lambda x: x[1]):
+        total_angle_sum = sum(self.angles)
+        running_angle_sum = 0
+        for m, a in zip(self.magnitudes, self.angles):
+            running_angle_sum += a
+            
             vec = Vector2(1, 0)
-            vec = vec.rotate(math.degrees(a))
+            vec = vec.rotate((running_angle_sum / total_angle_sum) * 360)
             vec *= m
             vertices.append(tuple(vec))
         
