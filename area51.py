@@ -23,6 +23,7 @@ import Box2D  # The main library
 from Box2D.b2 import (world, polygonShape, circleShape, staticBody, dynamicBody)
 
 from genomes import TestGenome
+from creature import Creature
 
 # --- constants ---
 # Box2D deals with meters, but we want to display pixels,
@@ -56,6 +57,7 @@ colors = {
 
 # Let's play with extending the shape classes to draw for us.
 
+creature = Creature.create_test_creature(world, (20, 15))
 
 def my_draw_polygon(polygon, body, fixture, i):
     vertices = [(body.transform * v) * PPM for v in polygon.vertices]
@@ -89,6 +91,7 @@ while running:
         for fixture in body.fixtures:
             fixture.shape.draw(body, fixture, i)
             i+=1
+    creature.render(screen)
     # Make Box2D simulate the physics of our world for one step.
     world.Step(TIME_STEP, 10, 10)
 
