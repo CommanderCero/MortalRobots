@@ -1,8 +1,9 @@
-import pygame
 import math
+import pygame
 
 from Box2D import b2Vec2, b2World, b2BodyDef, b2PolygonShape, b2_dynamicBody, b2CircleShape, b2FixtureDef
 from pygame import Vector2
+from game_base import GameBase
 
 from constants import PPM
 
@@ -26,25 +27,27 @@ class Car:
         for wheel in self.wheels:
             wheel.joints[0].joint.motorSpeed = self.wheel_motor_speed
     
-    def render(self, screen):
-        self._render_body(screen)
+    def render(self, game: GameBase):
+        self._render_body(game)
+        self._render_wheels(game)
         
-    def _render_body(self, screen):
+    def _render_body(self, game: GameBase):
         for fixture in self.body.fixtures:
             vertices = [(self.body.transform * v) * PPM for v in fixture.shape.vertices]
-            pygame.draw.polygon(screen, Car.BODY_COLOR, vertices)
+            game.draw_polygon(Car.BODY_COLOR, vertices)
             for fixture in self.body.fixtures:
                 vertices = [(self.body.transform * v) * PPM for v in fixture.shape.vertices]
                 for v in vertices:
-                    pygame.draw.line(screen, Car.BODY_LINE_COLOR, self.body.transform.position * PPM, v, width=2)
+                    game.draw_line(Car.BODY_LINE_COLOR, self.body.transform.position * PPM, v, width=2)
                     
+    def _render_wheels(self, game: GameBase):
         for wheel in self.wheels:
             center = wheel.position * PPM
             radius = int(wheel.fixtures[0].shape.radius * PPM)
             dir_vec = Vector2(0, radius).rotate(math.degrees(wheel.angle))
             
-            pygame.draw.circle(screen, Car.WHEEL_COLOR, center, radius)
-            pygame.draw.line(screen, Car.WHEEL_LINE_COLOR, center, center + dir_vec, width=2)
+            game.draw_circle(Car.WHEEL_COLOR, center, radius)
+            game.draw_line(Car.WHEEL_LINE_COLOR, center, center + dir_vec, width=2)
         
     @property
     def position(self):

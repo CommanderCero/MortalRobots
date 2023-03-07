@@ -1,11 +1,13 @@
 import pygame
 
+
 from genomes import CarGenome
 from population import Population
-
 from constants import PPM
-
+from game_base import GameBase
 from Box2D import b2World, b2PolygonShape
+from pygame import Vector2
+
 from typing import List
 
 def create_evaluation_world():
@@ -35,23 +37,15 @@ def generate_next_generation(population: Population):
 GROUND_COLOR = pygame.Color("#808080")
     
 
-class CarEvolutionRenderer:
-    def __init__(self, population: Population, screen_width, screen_height, fps=60):
-        pygame.init()
+class CarEvolutionRenderer(GameBase):
+    def __init__(self, screen_width, screen_height, population: Population, fps=60):
+        super().__init__('Car Evolution', screen_width, screen_height, fps=fps)
         self.population = population
-        
-        self.fps = fps
-        self.fixed_delta_time = 1. / self.fps
-        self.clock = pygame.time.Clock()
-        self.background_color = pygame.Color("white")
-        self.font = pygame.font.SysFont("Arial" , 18 , bold = True)
-        
-        self.screen = pygame.display.set_mode((screen_width, screen_width), 0, 32)
-        pygame.display.set_caption('Car Evolution')
-        
         self.initialize_worlds()
         self.num_steps = 0
         self.epochs = 0
+        
+        self.font = pygame.font.SysFont("Arial" , 18 , bold = True)
     
     def initialize_worlds(self):
         self.worlds = []
@@ -70,53 +64,42 @@ class CarEvolutionRenderer:
             self.worlds.append(world)
             self.cars.append(car)
     
-    def run(self):
-        running = True
-        while running:
-            # Handle events
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT: # The user closed the window or pressed escape
-                    running = False
-                else:
-                    self.handle_event(event)
-            
-            # Simulate
-            self.fixed_step()
-            # Render
-            self.render()
-            # Wait to render the next frame
-            self.clock.tick(self.fps)
-        pygame.quit()
-    
-    def fixed_step(self):
+    def fixed_step(self, delta_time):
+        if pygame.key.get_pressed()[pygame.K_LEFT]:
+            self.move_camera(Vector2(-100, 0) * delta_time)
+        if pygame.key.get_pressed()[pygame.K_RIGHT]:
+                self.move_camera(Vector2(100, 0) * delta_time)
+        if pygame.key.get_pressed()[pygame.K_UP]:
+            self.move_camera(Vector2(0, -100) * delta_time)
+        if pygame.key.get_pressed()[pygame.K_DOWN]:
+            self.move_camera(Vector2(0, 100) * delta_time)
+
         # Called a fixed amount of times each second
         for car in self.cars:
             car.update()
         for world in self.worlds:
-            world.Step(self.fixed_delta_time, 10, 10)
+            world.Step(delta_time, 10, 10)
             
         self.num_steps += 1
         # Update fitness
         for car, genome in zip(self.cars, self.population.genomes):
             genome.fitness = car.position.x
-        if self.num_steps == 200:
+        if self.num_steps == 1000:
             generate_next_generation(self.population)
             self.initialize_worlds()
             self.epochs += 1
             self.num_steps = 0
     
     def render(self):
-        self.screen.fill(self.background_color)
-        
         # Draw ground from any world
         ground_shape = self.ground_body.fixtures[0].shape
         vertices = [(self.ground_body.transform * v) * PPM for v in ground_shape.vertices]
-        pygame.draw.polygon(self.screen, GROUND_COLOR, vertices)
+        self.draw_polygon(GROUND_COLOR, vertices)
         
         # Draw the cars from each world, sorted by fitness
         sorted_cars = sorted(zip(self.cars, self.population.genomes), key=lambda x: x[1].fitness, reverse=True)
-        for car, genome in list(sorted_cars)[:1]:
-            car.render(self.screen)
+        for car, genome in list(sorted_cars)[:10]:
+            car.render(self)
         
         # Show fps    
         fps = str(int(self.clock.get_fps()))
@@ -128,9 +111,6 @@ class CarEvolutionRenderer:
         self.screen.blit(step,(0,18))
         self.screen.blit(epoch,(0,36))
         
-        # Display newly rendered frame
-        pygame.display.flip()
-    
     def handle_event(self, event):
         pass
 
@@ -141,5 +121,5 @@ if __name__ == "__main__":
         genome_fn=lambda: CarGenome(body_vertices=NUM_VERTICES)
     )
     
-    renderer = CarEvolutionRenderer(car_population, 640, 480)
+    renderer = CarEvolutionRenderer(640, 480, car_population)
     renderer.run()
