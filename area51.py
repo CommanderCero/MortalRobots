@@ -22,7 +22,7 @@ import Box2D  # The main library
 # Box2D.b2 maps Box2D.b2Vec2 to vec2 (and so on)
 from Box2D.b2 import (world, polygonShape, circleShape, staticBody, dynamicBody)
 
-from genomes import TestGenome
+from genomes import CarGenome
 from creature import Creature
 
 # --- constants ---
@@ -40,13 +40,7 @@ clock = pygame.time.Clock()
 
 # --- pybox2d world setup ---
 # Create the world
-world = world(gravity=(0, 9.71), doSleep=True)
-
-# And a static body to hold the ground shape
-ground_body = world.CreateStaticBody(
-    position=(0, 24),
-    shapes=polygonShape(box=(50, 1)),
-)
+world = evaluate_cars([CarGenome()])
 
 genome_body = None
 wheels_bodies = []
@@ -87,16 +81,6 @@ while running:
             # The user closed the window or pressed escape
             running = False
         if genome_body is None or event.type == pygame.KEYDOWN:
-            if genome_body is None or event.key == pygame.K_r:
-                if genome_body is not None:
-                    world.DestroyBody(genome_body)
-                    for b in wheels_bodies:
-                        world.DestroyBody(b)
-
-                genome = TestGenome(body_vertices=10)
-                genome.mutate()
-                genome_body, wheels_bodies = genome.create_body(world, (10, 15))
-
                 for body in world.bodies:
                     for fixture in body.fixtures:
                         colors.append(list(np.random.choice(range(256), size=3)))
@@ -108,7 +92,6 @@ while running:
         for fixture in body.fixtures:
             fixture.shape.draw(body, fixture, i)
             i+=1
-    genome.update()
     creature.render(screen)
     # Make Box2D simulate the physics of our world for one step.
     world.Step(TIME_STEP, 10, 10)

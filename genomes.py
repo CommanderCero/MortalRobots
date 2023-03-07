@@ -7,8 +7,9 @@ from Box2D import (
 )
 from pygame import Vector2
 
+from phenomes import Car
 
-class TestGenome:
+class CarGenome:
     def __init__(self, body_vertices=10):
         self.magnitudes = np.random.uniform(0.1, 4, size=body_vertices)
         self.angles = np.random.uniform(0, 1, size=body_vertices)
@@ -25,7 +26,7 @@ class TestGenome:
         self.magnitudes[mag_indices] = np.random.uniform(0.1, 4, size=len(self.magnitudes[mag_indices]))
         self.angles[angle_indices] = np.random.uniform(0, 1, size=len(self.angles[angle_indices]))
 
-    def crossover(self, other: "TestGenome"):
+    def crossover(self, other: "CarGenome"):
         #t = np.random.uniform(0, 1)
         t = np.random.uniform(0, 1, size=len(self.magnitudes))
         new_magnitudes = t * self.magnitudes + (1 - t) * other.magnitudes
@@ -35,6 +36,26 @@ class TestGenome:
         self.angles = (1 - t) * self.angles + t * other.angles
         other.magnitudes = new_magnitudes
         other.angles = new_angles
+
+    def create_car(self, world: b2World, position):
+        vertices = []
+        total_angle_sum = sum(self.angles)
+        running_angle_sum = 0
+        for m, a in zip(self.magnitudes, self.angles):
+            running_angle_sum += a
+
+            vec = Vector2(1, 0)
+            vec = vec.rotate((running_angle_sum / total_angle_sum) * 360)
+            vec *= m
+            vertices.append(tuple(vec))
+
+        car = world.CreateDynamicBody(position=position)
+        body_parts = []
+        for i in range(len(vertices)):
+            triangle = [vertices[i], vertices[(i+1) % len(vertices)], (0, 0)]
+            body_parts.append(car.CreatePolygonFixture(vertices=triangle, density=1))
+        wheels, wheels_bodies = self._create_wheels_bodies(world, car, vertices)
+        return Car(car, wheels_bodies)
 
     def create_body(self, world: b2World, position):
         vertices = []
@@ -73,7 +94,7 @@ class TestGenome:
                 # angle=angle
             )
             wheel_shape = b2CircleShape(radius=self.wheels_radius)
-            wheel_fixture = b2FixtureDef(shape=wheel_shape, density=1.0)
+            wheel_fixture = b2FixtureDef(shape=wheel_shape, density=1.0, friction=1)
             wheel_body.CreateFixture(wheel_fixture)
             wheel_joint = world.CreateRevoluteJoint(
                 bodyA=body,
