@@ -83,7 +83,7 @@ class CarEvolutionRenderer(GameBase):
             self.worlds.append(world)
             self.cars.append(car)
     
-    def fixed_step(self, delta_time):
+    def _move_camera(self):
         if pygame.key.get_pressed()[pygame.K_LEFT]:
             self.move_camera(Vector2(-100, 0) )
         if pygame.key.get_pressed()[pygame.K_RIGHT]:
@@ -92,6 +92,9 @@ class CarEvolutionRenderer(GameBase):
             self.move_camera(Vector2(0, -100))
         if pygame.key.get_pressed()[pygame.K_DOWN]:
             self.move_camera(Vector2(0, 100))
+
+    def fixed_step(self, delta_time):
+        self._move_camera()
 
         # Called a fixed amount of times each second
         for car in self.cars:
@@ -114,6 +117,15 @@ class CarEvolutionRenderer(GameBase):
             self.num_steps = 0
     
     def render(self):
+        self.render_ground()
+        # Draw the cars from each world, sorted by fitness
+        sorted_cars = list(sorted(self.cars, key=lambda x: x.position.x))
+        for car in [*sorted_cars[:3], *self.cars[:7]]:
+            car.render(self)
+
+        self.render_info()
+
+    def render_ground(self):
         # Draw ground from any world
         for floor_tile in self.tiles:
             ground_shape = floor_tile.fixtures[0].shape
@@ -123,12 +135,8 @@ class CarEvolutionRenderer(GameBase):
             self.draw_circle(pygame.Color("YELLOW"), vertices[1], 2)
             self.draw_circle(pygame.Color("GREEN"), vertices[2], 2)
             self.draw_circle(pygame.Color("PURPLE"), vertices[3], 2)
-        
-        # Draw the cars from each world, sorted by fitness
-        sorted_cars = list(sorted(self.cars, key=lambda x: x.position.x))
-        for car in [*sorted_cars[:3], *self.cars[:7]]:
-            car.render(self)
-        
+
+    def render_info(self):
         # Show fps    
         fps = str(int(self.clock.get_fps()))
         fps_t = self.font.render(fps, 1, pygame.Color("RED"))
@@ -138,7 +146,7 @@ class CarEvolutionRenderer(GameBase):
         epoch = self.font.render(f"Epoch: {self.epochs}", 1, pygame.Color("BLUE"))
         self.screen.blit(step,(0,18))
         self.screen.blit(epoch,(0,36))
-        
+
     def handle_event(self, event):
         pass
 
