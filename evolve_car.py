@@ -1,31 +1,55 @@
 import pygame
-
+import math
+import numpy as np
 
 from genomes import CarGenome
 from population import Population
 from constants import PPM
 from game_base import GameBase
-from Box2D import b2World, b2PolygonShape
+from Box2D import b2World, b2PolygonShape, b2BodyDef, b2Vec2, b2FixtureDef
 from pygame import Vector2
 
 from typing import List
 
-def create_evaluation_world():
-    world = b2World(gravity=(0, 9.71), doSleep=True)
-    # Add a floor
-    floor_size=1000
-    ground_body = world.CreateStaticBody(
-        position=(floor_size, 24),
-        shapes=b2PolygonShape(box=(floor_size, 1)),
-    )
-    return world
+def create_floor_tile(world, dim, position, angle):
+    xdim, ydim = dim
+    vertices = [b2Vec2(0, 0), b2Vec2(0, -ydim), b2Vec2(xdim, -ydim), b2Vec2(xdim, 0)]
+    center = b2Vec2(0, 0)
+    for i, v in enumerate(vertices):
+        x = math.cos(angle) * (vertices[i].x - center.x) - math.sin(angle) * (vertices[i].y - center.y) + center.x
+        y = math.sin(angle) * (vertices[i].x - center.x) + math.cos(angle) * (vertices[i].y - center.y) + center.y
+        vertices[i] = b2Vec2(x,y)
 
-def evaluate_cars(cars: List[CarGenome]):
-    for car in cars:
-        world = create_evaluation_world()
-        car.create_body(world, (5,19))
-        return world
-    
+    body = world.CreateStaticBody(
+        position=position,
+        shapes=b2PolygonShape(vertices=vertices),
+    )
+    body.CreatePolygonFixture(vertices=vertices, friction=1)
+
+    return vertices[3] + position, body
+
+def create_floor(world, num_floor_tiles=100, seed=1):
+    generator = np.random.default_rng(seed)
+    dim = Vector2(4, 0.5)
+    tiles = []
+    next_position = Vector2(0,24)
+    for i in range(num_floor_tiles):
+        angle = (generator.random() * 3 - 1.5) * 1.5 * i / num_floor_tiles
+        next_position, tile = create_floor_tile(world, dim, next_position, angle)
+        tiles.append(tile)
+    return tiles
+
+def evaluate_genomes(genomes):
+    for genome in genomes:
+        world = b2World(gravity=(0, 9.71), doSleep=True)
+        tiles = create_floor(world)
+        car = genome.create_car(world, (5,19))
+        
+        for i in range(1000):
+            car.update()
+            world.Step(2./60, 10, 10)
+            
+        genome.fitness = car.position.x
 
 def generate_next_generation(population: Population):
     elites = population.elite_select(int(len(population) * 0.2))
@@ -34,10 +58,9 @@ def generate_next_generation(population: Population):
         child.mutate()
     population.genomes = [*elites, *children]
 
-GROUND_COLOR = pygame.Color("#808080")
-    
-
 class CarEvolutionRenderer(GameBase):
+    GROUND_COLOR = pygame.Color("#808080")
+    
     def __init__(self, screen_width, screen_height, population: Population, fps=60):
         super().__init__('Car Evolution', screen_width, screen_height, fps=fps)
         self.population = population
@@ -53,11 +76,7 @@ class CarEvolutionRenderer(GameBase):
         for genome in self.population.genomes:
             world = b2World(gravity=(0, 9.71), doSleep=True)
             # Add a floor
-            floor_size=1000
-            self.ground_body = world.CreateStaticBody(
-                position=(floor_size, 24),
-                shapes=b2PolygonShape(box=(floor_size, 1)),
-            )
+            self.tiles = create_floor(world)
             # Add a car
             car = genome.create_car(world, (5,19))
             
@@ -66,39 +85,48 @@ class CarEvolutionRenderer(GameBase):
     
     def fixed_step(self, delta_time):
         if pygame.key.get_pressed()[pygame.K_LEFT]:
-            self.move_camera(Vector2(-100, 0) * delta_time)
+            self.move_camera(Vector2(-100, 0) )
         if pygame.key.get_pressed()[pygame.K_RIGHT]:
-                self.move_camera(Vector2(100, 0) * delta_time)
+                self.move_camera(Vector2(100, 0))
         if pygame.key.get_pressed()[pygame.K_UP]:
-            self.move_camera(Vector2(0, -100) * delta_time)
+            self.move_camera(Vector2(0, -100))
         if pygame.key.get_pressed()[pygame.K_DOWN]:
-            self.move_camera(Vector2(0, 100) * delta_time)
+            self.move_camera(Vector2(0, 100))
 
         # Called a fixed amount of times each second
         for car in self.cars:
             car.update()
         for world in self.worlds:
-            world.Step(delta_time, 10, 10)
+            world.Step(delta_time * 2, 10, 10)
             
         self.num_steps += 1
         # Update fitness
         for car, genome in zip(self.cars, self.population.genomes):
             genome.fitness = car.position.x
         if self.num_steps == 1000:
-            generate_next_generation(self.population)
+            for i in range(3):
+                evaluate_genomes(self.population.genomes)
+                generate_next_generation(self.population)
+                self.epochs += 1
+            
             self.initialize_worlds()
             self.epochs += 1
             self.num_steps = 0
     
     def render(self):
         # Draw ground from any world
-        ground_shape = self.ground_body.fixtures[0].shape
-        vertices = [(self.ground_body.transform * v) * PPM for v in ground_shape.vertices]
-        self.draw_polygon(GROUND_COLOR, vertices)
+        for floor_tile in self.tiles:
+            ground_shape = floor_tile.fixtures[0].shape
+            vertices = [(floor_tile.transform * v) * PPM for v in ground_shape.vertices]
+            self.draw_polygon(CarEvolutionRenderer.GROUND_COLOR, vertices)
+            self.draw_circle(pygame.Color("RED"), vertices[0], 2)
+            self.draw_circle(pygame.Color("YELLOW"), vertices[1], 2)
+            self.draw_circle(pygame.Color("GREEN"), vertices[2], 2)
+            self.draw_circle(pygame.Color("PURPLE"), vertices[3], 2)
         
         # Draw the cars from each world, sorted by fitness
-        sorted_cars = sorted(zip(self.cars, self.population.genomes), key=lambda x: x[1].fitness, reverse=True)
-        for car, genome in list(sorted_cars)[:10]:
+        sorted_cars = list(sorted(self.cars, key=lambda x: x.position.x))
+        for car in [*sorted_cars[:3], *self.cars[:7]]:
             car.render(self)
         
         # Show fps    

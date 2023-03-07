@@ -13,7 +13,8 @@ class CarGenome:
     def __init__(self, body_vertices=10):
         self.magnitudes = np.random.uniform(0.1, 4, size=body_vertices)
         self.angles = np.random.uniform(0, 1, size=body_vertices)
-        self.wheels_flags = np.random.randint(0, 2, size=body_vertices)
+        self.wheels_flags = np.random.randint(0, 2, size=body_vertices, dtype=bool)
+        self.wheel_size = np.random.uniform(0.1, 1, size=body_vertices)
         self.wheel_motor_speed = 10.0
         self.wheels_radius = 0.5
         self.fitness = 0
@@ -22,20 +23,27 @@ class CarGenome:
         mutation_rate = 0.1
         mag_indices = np.where(np.random.uniform(0, 1, size=len(self.magnitudes)) < mutation_rate)
         angle_indices = np.where(np.random.uniform(0, 1, size=len(self.angles)) < mutation_rate)
+        wheel_indices = np.where(np.random.uniform(0, 1, size=len(self.wheels_flags)) < mutation_rate)
+        indices = np.where(np.random.uniform(0, 1, size=len(self.wheel_size)) < mutation_rate)
 
         self.magnitudes[mag_indices] = np.random.uniform(0.1, 4, size=len(self.magnitudes[mag_indices]))
         self.angles[angle_indices] = np.random.uniform(0, 1, size=len(self.angles[angle_indices]))
+        self.wheels_flags[wheel_indices] = np.random.randint(0, 2, size=len(self.wheels_flags[wheel_indices]))
+        self.wheel_size[indices] = np.random.randint(0.1, 1.5, size=len(self.wheel_size[indices]))
 
     def crossover(self, other: "CarGenome"):
         #t = np.random.uniform(0, 1)
         t = np.random.uniform(0, 1, size=len(self.magnitudes))
         new_magnitudes = t * self.magnitudes + (1 - t) * other.magnitudes
         new_angles = t * self.angles + (1 - t) * other.angles
+        new_size = t * self.wheel_size + (1 - t) * other.wheel_size
 
         self.magnitudes = (1 - t) * self.magnitudes + t * other.magnitudes
         self.angles = (1 - t) * self.angles + t * other.angles
+        self.wheel_size = (1 - t) * self.wheel_size + t * other.wheel_size
         other.magnitudes = new_magnitudes
         other.angles = new_angles
+        other.wheel_size = new_size
 
     def create_car(self, world: b2World, position):
         vertices = []
@@ -84,7 +92,7 @@ class CarGenome:
         wheels = []
         wheels_bodies = []
         for wheel_ind, is_wheel in enumerate(self.wheels_flags):
-            if is_wheel == 0:
+            if not is_wheel:
                 continue
 
             vertex = vertices[wheel_ind]
@@ -93,8 +101,8 @@ class CarGenome:
                 position=body.worldCenter + b2Vec2(vertex[0], vertex[1]),
                 # angle=angle
             )
-            wheel_shape = b2CircleShape(radius=self.wheels_radius)
-            wheel_fixture = b2FixtureDef(shape=wheel_shape, density=1.0, friction=1)
+            wheel_shape = b2CircleShape(radius=self.wheel_size[wheel_ind])
+            wheel_fixture = b2FixtureDef(shape=wheel_shape, density=5.0, friction=1)
             wheel_body.CreateFixture(wheel_fixture)
             wheel_joint = world.CreateRevoluteJoint(
                 bodyA=body,

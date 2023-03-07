@@ -25,7 +25,7 @@ class Population:
     def roulette_wheel_crossover(self, num_children: int) -> List[Genome]:
         # Normalize fitness values to probabilities for roulette wheel selection
         genome_fitness = np.array([genome.fitness for genome in self.genomes])
-        genome_fitness += genome_fitness.min() # Make everything positive
+        genome_fitness -= genome_fitness.min() # Make everything positive
         parent_probabilities = genome_fitness / genome_fitness.sum()
         
         parents = np.random.choice(self.genomes, size=num_children, p=parent_probabilities)

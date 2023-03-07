@@ -16,7 +16,7 @@ class Car:
     def __init__(self,
             body,
             wheels,
-            wheel_motor_speed=10.0
+            wheel_motor_speed=40.0
         ):
         self.body = body
         self.wheels = wheels
