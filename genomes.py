@@ -16,7 +16,6 @@ class CarGenome:
         self.wheels_flags = np.random.randint(0, 2, size=body_vertices, dtype=bool)
         self.wheel_size = np.random.uniform(0.1, 1, size=body_vertices)
         self.wheel_motor_speed = 10.0
-        self.wheels_radius = 0.5
         self.fitness = 0
 
     def mutate(self):
@@ -45,7 +44,7 @@ class CarGenome:
         other.angles = new_angles
         other.wheel_size = new_size
 
-    def create_car(self, world: b2World, position):
+    def create_car(self, world: b2World, position, is_flipped=False):
         vertices = []
         total_angle_sum = sum(self.angles)
         running_angle_sum = 0
@@ -57,13 +56,18 @@ class CarGenome:
             vec *= m
             vertices.append(tuple(vec))
 
+        wheel_speed = self.wheel_motor_speed
+        if is_flipped:
+            vertices = [(-x, y) for x, y in vertices]
+            wheel_speed = -wheel_speed
+
         car = world.CreateDynamicBody(position=position)
         body_parts = []
         for i in range(len(vertices)):
             triangle = [vertices[i], vertices[(i+1) % len(vertices)], (0, 0)]
             body_parts.append(car.CreatePolygonFixture(vertices=triangle, density=1))
         wheels, wheels_bodies = self._create_wheels_bodies(world, car, vertices)
-        return Car(car, wheels_bodies)
+        return Car(car, wheels_bodies, wheel_motor_speed=wheel_speed)
 
     def create_body(self, world: b2World, position):
         vertices = []
