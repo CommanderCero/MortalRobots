@@ -11,10 +11,12 @@ class GameBase(ABC):
         self.fixed_delta_time = 1. / self.fps
         self.clock = pygame.time.Clock()
         self.background_color = pygame.Color("white")
-        
+        self.screen_width = screen_width
+        self.screen_height = screen_height
+
         self.camera_pos = Vector2(0,0)
         
-        self.screen = pygame.display.set_mode((screen_width, screen_width), 0, 32)
+        self.screen = pygame.display.set_mode((screen_width, screen_height), 0, 32)
         pygame.display.set_caption(title)
         
     def run(self):
