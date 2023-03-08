@@ -28,9 +28,10 @@ class Population:
         genome_fitness -= genome_fitness.min() # Make everything positive
         parent_probabilities = genome_fitness / genome_fitness.sum()
         
-        parents = np.random.choice(self.genomes, size=num_children, p=parent_probabilities)
+        # +1 to avoig having not enough parents for an uneven number of children
+        parents = np.random.choice(self.genomes, size=num_children+1, p=parent_probabilities)
         children = []
-        for p1, p2 in zip(parents[:num_children//2], parents[num_children//2:]):
+        for p1, p2 in zip(parents[:len(parents)//2], parents[len(parents)//2:]):
             # Crossover modifies both genomes, so we have to first copy them
             c1 = deepcopy(p1)
             c2 = deepcopy(p2)
@@ -43,6 +44,11 @@ class Population:
     def elite_select(self, num_children: int) -> List[Genome]:
         sorted_genomes = sorted(self.genomes, key=lambda x: x.fitness, reverse=True)
         return sorted_genomes[:num_children]
+    
+    def replace_weak_genome(self, new_genome, weak_percentage=0.2):
+        self.genomes = sorted(self.genomes, key=lambda x: x.fitness)
+        target_index = np.random.randint(0, int(len(self.genomes) * weak_percentage))
+        self.genomes[target_index] = new_genome
     
     def randomize(self, population_size):
         self.genomes = [self.genome_fn() for _ in range(population_size)]
