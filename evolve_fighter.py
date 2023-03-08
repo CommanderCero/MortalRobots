@@ -6,7 +6,7 @@ from game_base import GameBase
 from Box2D import b2World, b2PolygonShape, b2BodyDef, b2Vec2, b2FixtureDef
 from constants import PPM
 from population import Population
-from genomes import CarGenome
+from genomes import FighterGenome
 from evolve_car import CarEvolutionRenderer, generate_next_generation, create_floor
 
 from trueskill import Rating, quality_1vs1, rate_1vs1 
@@ -18,15 +18,25 @@ class CarFightEvolutionRenderer(GameBase):
         super().__init__("Robot Battle Dome", screen_width, screen_height)
         self.screen_width, self.screen_height = screen_width, screen_height
         self.evolver = evolver
-        self.initialize_fight(*evolver.get_fair_matchup())
+        self.initialize_fight()
         self.move_camera((-screen_width//2,0)) # Center the fight
         self.font = pygame.font.SysFont("Arial" , 18 , bold = True)
 
-    def initialize_fight(self, genome_left, genome_right):
+    def initialize_fight(self):
+        if np.random.rand() < 0.1:
+            self.fight_type = "unfair"
+            left, right = evolver.get_unfair_matchup()
+        elif np.random.rand() < 0.5:
+            self.fight_type = "random"
+            left, right = evolver.get_random_matchup()
+        else:
+            self.fight_type = "balanced"
+            left, right = evolver.get_fair_matchup()
+        
         self.num_steps = 0
-        self.genome_left = genome_left
-        self.genome_right = genome_right
-        self.world, self.tiles, self.car_left, self.car_right = self.evolver.create_arena(genome_left, genome_right)
+        self.genome_left = left
+        self.genome_right = right
+        self.world, self.tiles, self.car_left, self.car_right = self.evolver.create_arena(left, right)
 
     def fixed_step(self, delta_time):
         if self.num_steps == self.evolver.evaluation_steps:
@@ -34,10 +44,7 @@ class CarFightEvolutionRenderer(GameBase):
                 self.evolver.evolve_new_genome()
                 self.evolver.evolve_new_genome(evolve_right_population=True)
                 
-            if np.random.rand() < 0.5:
-                self.initialize_fight(*evolver.get_fair_matchup())
-            else:
-                self.initialize_fight(*evolver.get_unfair_matchup())
+            self.initialize_fight()
         
         self._move_camera()
 
@@ -71,8 +78,10 @@ class CarFightEvolutionRenderer(GameBase):
 
     def _render_matchup_information(self):
         matchup_quality = quality_1vs1(self.genome_left.rating, self.genome_right.rating)
-        matchup_quality = self.font.render(f"Matchup Quality: {matchup_quality}", 1, pygame.Color("BLACK"))
+        matchup_quality = self.font.render(f"Matchup Quality: {matchup_quality:.2f}", 1, pygame.Color("BLACK"))
         self._blit_centered_text(matchup_quality, Vector2(self.screen_width // 2, 20))
+        fight_type = self.font.render(f"Matchup Type: {self.fight_type}", 1, pygame.Color("BLACK"))
+        self._blit_centered_text(fight_type, Vector2(self.screen_width // 2, 38))
         
     def _render_stats(self, genome, start_pos, color):
         stats = [
@@ -112,11 +121,11 @@ class FighterEvolver:
         
         self.population_left = Population(
             population_size=POPULATION_SIZE,
-            genome_fn=lambda: CarGenome(body_vertices=NUM_VERTICES)
+            genome_fn=lambda: FighterGenome(body_vertices=NUM_VERTICES)
         )
         self.population_right = Population(
             population_size=POPULATION_SIZE,
-            genome_fn=lambda: CarGenome(body_vertices=NUM_VERTICES)
+            genome_fn=lambda: FighterGenome(body_vertices=NUM_VERTICES)
         )
         
         for genome in self.population_left.genomes:
@@ -138,6 +147,11 @@ class FighterEvolver:
         for i in range(num_evaluations):
             opponent = self._find_fair_opponent(child, opponent_population)
             self.evaluate_matchup(child, opponent)
+    
+    def get_random_matchup(self):
+        random_left = np.random.choice(self.population_left.genomes)
+        random_right = np.random.choice(self.population_right.genomes)
+        return (random_left, random_right)
     
     def get_fair_matchup(self):
         random_left = np.random.choice(self.population_left.genomes)
