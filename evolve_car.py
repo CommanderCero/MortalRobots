@@ -165,69 +165,6 @@ class CarEvolutionRenderer(GameBase):
     def handle_event(self, event):
         pass
 
-
-class CarFightEvolutionRenderer(CarEvolutionRenderer):
-    def __init__(self, screen_width, screen_height,
-                 population_left: Population,
-                 population_right: Population,
-                 fps=60, num_iterations=300):
-        self.arena_max_right = screen_width / PPM
-        self.arena_min_left = 0
-        self.spawn_margin = 5
-        self.spawn_y = 19
-        self.population_left = population_left
-        self.population_right = population_right
-        super().__init__(screen_width, screen_height, population_left, fps, num_iterations)
-
-    def initialize_worlds(self):
-        self.worlds = []
-        self.cars_pairs = []
-        for genome_l, genome_r in zip(
-            self.population_left.genomes,
-            self.population_right.genomes
-        ):
-            world = b2World(gravity=(0, 9.71), doSleep=True)
-            # Add a floor
-            self.tiles = create_floor(world)
-            # Add a car
-            car_left = genome_l.create_car(world,
-                (self.arena_min_left + self.spawn_margin, self.spawn_y))
-            car_right = genome_r.create_car(world,
-                (self.arena_max_right - self.spawn_margin, self.spawn_y),
-                is_flipped=True)
-
-            self.worlds.append(world)
-            self.cars_pairs.append((car_left, car_right))
-
-    def _generate_next_generation(self):
-        # generate_next_generation(self.population_left)
-        generate_next_generation(self.population_right)
-
-    def _update_world(self, delta_time):
-        # Called a fixed amount of times each second
-        for car_pair in self.cars_pairs:
-            for car in car_pair:
-                car.update()
-        for world in self.worlds:
-            world.Step(delta_time, 10, 10)
-
-    def _update_fitness(self):
-        for (car_l, car_r), genome_l, genome_r in zip(
-            self.cars_pairs,
-            self.population_left.genomes,
-            self.population_right.genomes,
-        ):
-            genome_l.fitness = car_l.position.x
-            genome_r.fitness = self.arena_max_right - self.spawn_margin \
-                - car_r.position.x
-
-    def render_cars(self):
-        # Draw one pair of cars from each world population
-        for car_pair in self.cars_pairs:
-            for car in car_pair:
-                car.render(self)
-            break
-
 if __name__ == "__main__":
     NUM_VERTICES = 10
     POPULATION_SIZE = 100
