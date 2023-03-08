@@ -75,10 +75,19 @@ class CarFightEvolutionRenderer(GameBase):
         self._blit_centered_text(matchup_quality, Vector2(self.screen_width // 2, 20))
         
     def _render_stats(self, genome, start_pos, color):
-        mu = self.font.render(f"Mu: {genome.rating.mu}", 1, color)
-        sigma = self.font.render(f"Sigma: {genome.rating.sigma}", 1, color)
-        self._blit_centered_text(mu, start_pos)
-        self._blit_centered_text(sigma, start_pos + Vector2(0, 18))
+        stats = [
+            ("mu",genome.rating.mu),
+            ("sigma",genome.rating.sigma),
+            ("wins",genome.wins),
+            ("losses",genome.losses),
+            ("draws",genome.draws)
+        ]
+        
+        pos = start_pos
+        for key, value in stats:
+            text = self.font.render(f"{key}: {value:.2f}", 1, color)
+            self._blit_centered_text(text, pos)
+            pos += Vector2(0, 18)
         
     def _blit_centered_text(self, text, pos):
         text_rect = text.get_rect(center=pos)
@@ -111,9 +120,9 @@ class FighterEvolver:
         )
         
         for genome in self.population_left.genomes:
-            genome.rating = Rating()
+            self._init_genome(genome)
         for genome in self.population_right.genomes:
-            genome.rating = Rating()
+            self._init_genome(genome)
     
     def evolve_new_genome(self, evolve_right_population=False, num_evaluations=5):
         self._set_fitness()
@@ -122,7 +131,7 @@ class FighterEvolver:
         # Generate a new child
         child, = evolve_population.roulette_wheel_crossover(num_children=1)
         child.mutate()
-        child.rating = Rating()
+        self._init_genome(child)
         # Add to population
         evolve_population.replace_weak_genome(child)
         # Evaluate genome
@@ -176,10 +185,16 @@ class FighterEvolver:
         if draw:
             # Either True/True or False/False, aka a draw
             genome_left.rating, genome_right.rating = rate_1vs1(genome_left.rating, genome_right.rating, drawn=True)
+            genome_left.draws += 1
+            genome_right.draws += 1
         elif left_won:
             genome_left.rating, genome_right.rating = rate_1vs1(genome_left.rating, genome_right.rating)
+            genome_left.wins += 1
+            genome_right.losses += 1
         elif right_won: # Redundant if but whatever
             genome_right.rating, genome_left.rating = rate_1vs1(genome_right.rating, genome_left.rating)
+            genome_left.losses += 1
+            genome_right.wins += 1
     
     def create_arena(self, genome_left, genome_right):
         world = b2World(gravity=(0, 9.71), doSleep=True)
@@ -209,6 +224,12 @@ class FighterEvolver:
         if swap:
             left, right = right, left
         return left, right
+    
+    def _init_genome(self, genome):
+        genome.rating = Rating()
+        genome.wins = 0
+        genome.losses = 0
+        genome.draws = 0
 
 if __name__ == "__main__":
     NUM_VERTICES = 10
@@ -216,8 +237,6 @@ if __name__ == "__main__":
 
     evolver = FighterEvolver(NUM_VERTICES, POPULATION_SIZE)
     evolver.evaluate_all_vs_n()
-    evolver.evolve_new_genome()
-    evolver.evolve_new_genome(evolve_right_population=True)
 
     renderer = CarFightEvolutionRenderer(
         700,
