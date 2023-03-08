@@ -1,6 +1,7 @@
 import pygame
 import numpy as np
 
+from collections import deque
 from pygame import Vector2
 from game_base import GameBase
 from Box2D import b2World, b2PolygonShape, b2BodyDef, b2Vec2, b2FixtureDef
@@ -23,15 +24,17 @@ class CarFightEvolutionRenderer(GameBase):
         self.font = pygame.font.SysFont("Arial" , 18 , bold = True)
 
     def initialize_fight(self):
-        if np.random.rand() < 0.1:
-            self.fight_type = "unfair"
-            left, right = evolver.get_unfair_matchup()
-        elif np.random.rand() < 0.5:
-            self.fight_type = "random"
-            left, right = evolver.get_random_matchup()
-        else:
-            self.fight_type = "balanced"
-            left, right = evolver.get_fair_matchup()
+        self.fight_type = "elite"
+        left, right = evolver.get_elite_matchup()
+        #if np.random.rand() < 0.1:
+        #    self.fight_type = "random"
+        #    left, right = evolver.get_random_matchup()
+        #if np.random.rand() < 0.7:
+        #    self.fight_type = "elite"
+        #    left, right = evolver.get_elite_matchup()
+        #else:
+        #    self.fight_type = "balanced"
+        #    left, right = evolver.get_fair_matchup()
         
         self.num_steps = 0
         self.genome_left = left
@@ -40,9 +43,9 @@ class CarFightEvolutionRenderer(GameBase):
 
     def fixed_step(self, delta_time):
         if self.num_steps == self.evolver.evaluation_steps:
-            for i in range(10):
-                self.evolver.evolve_new_genome()
-                self.evolver.evolve_new_genome(evolve_right_population=True)
+            self.evolver.evolve_new_genome()
+            self.evolver.evolve_new_genome(evolve_right_population=True)
+            self.evolver.evaluate_all_vs_n(n=2)
                 
             self.initialize_fight()
         
@@ -87,6 +90,7 @@ class CarFightEvolutionRenderer(GameBase):
         stats = [
             ("mu",genome.rating.mu),
             ("sigma",genome.rating.sigma),
+            ("avg_score", np.mean(genome.last_results)),
             ("wins",genome.wins),
             ("losses",genome.losses),
             ("draws",genome.draws)
@@ -153,6 +157,11 @@ class FighterEvolver:
         random_right = np.random.choice(self.population_right.genomes)
         return (random_left, random_right)
     
+    def get_elite_matchup(self):
+        elites_left = self.population_left.elite_select(10)
+        elites_right = self.population_right.elite_select(10)
+        return np.random.choice(elites_left), np.random.choice(elites_right)
+    
     def get_fair_matchup(self):
         random_left = np.random.choice(self.population_left.genomes)
         opponent = self._find_fair_opponent(random_left, self.population_right)
@@ -170,16 +179,20 @@ class FighterEvolver:
         weak_genome = min(weak_population.genomes, key=lambda x: x.rating.mu)
         return strong_genome, weak_genome
     
+    def evaluate_random_matches(self, n=20):
+        for _ in range(n):
+            left, right = self.get_fair_matchup()
+            self.evaluate_matchup(left, right)
+    
     def evaluate_all_vs_n(self, n=5):
         """
-        Will take all genomes from one population and match them agains n from the other population.
-        As such this will result in population_size * n matches
+        Will take all genomes from one population and match them against n from the other population.
+        As such this will result in population_size * n matches, and the genomes from each population will participated in n matches.
         This method is expensive, but good for initializing a random population
         """
-        num_matches = n * len(self.population_left)
-        opponents = np.random.choice(self.population_right.genomes, size=num_matches)
+        opponents = self.population_right.genomes * n
+        np.random.shuffle(opponents)
         for i, genome in enumerate(self.population_left.genomes):
-            print(i)
             matchups = opponents[i*5:i*5+5]
             for opponent in matchups:
                 self.evaluate_matchup(genome, opponent)
@@ -192,10 +205,16 @@ class FighterEvolver:
             car_right.update()
             world.Step(1./60, 10, 10)
         
-        # You win the game if you get over the center
+        # Push the opponent as far as you can
+        fitness_left = car_right.position.x
+        fitness_right = -car_left.position.x
+        genome_left.last_results.append(fitness_left - fitness_right)
+        genome_right.last_results.append(fitness_right - fitness_left)
+        
         left_won = car_left.position.x > 0
         right_won = car_right.position.x < 0
-        draw = not (left_won ^ right_won)
+        draw = left_won == right_won
+        breakpoint
         if draw:
             # Either True/True or False/False, aka a draw
             genome_left.rating, genome_right.rating = rate_1vs1(genome_left.rating, genome_right.rating, drawn=True)
@@ -224,9 +243,9 @@ class FighterEvolver:
     
     def _set_fitness(self):
         for genome in self.population_left.genomes:
-            genome.fitness = genome.rating.mu
+            genome.fitness = np.mean(genome.last_results) + 0.1 * genome.rating.mu
         for genome in self.population_right.genomes:
-            genome.fitness = genome.rating.mu
+            genome.fitness = np.mean(genome.last_results) + 0.1 * genome.rating.mu
     
     def _find_fair_opponent(self, genome, opponent_population):
         opponent = max(opponent_population.genomes, key=lambda x: quality_1vs1(genome.rating, x.rating))
@@ -240,6 +259,7 @@ class FighterEvolver:
         return left, right
     
     def _init_genome(self, genome):
+        genome.last_results = deque(maxlen=5)
         genome.rating = Rating()
         genome.wins = 0
         genome.losses = 0
