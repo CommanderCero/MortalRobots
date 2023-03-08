@@ -8,20 +8,25 @@ from game_base import GameBase
 from constants import PPM
 
 class Car:
-    BODY_COLOR = pygame.Color("#238fbb")
+    # BODY_COLOR = pygame.Color("#238fbb")
+    # BODY_COLOR = pygame.Color(30, 30, 255, 255)
     BODY_LINE_COLOR = pygame.Color("#1c7296")
-    WHEEL_COLOR = pygame.Color("#e28743")
+    # WHEEL_COLOR = pygame.Color("#e28743")
     WHEEL_LINE_COLOR = pygame.Color(0, 0, 0, 255)
     
-    def __init__(self,
+    def __init__(
+            self,
             body,
             wheels,
             wheel_motor_speed,
+            body_density,
+            wheel_density,
         ):
         self.body = body
         self.wheels = wheels
-        
         self.wheel_motor_speed = wheel_motor_speed
+        self.body_density = body_density
+        self.wheel_density = wheel_density
     
     def update(self):
         for wheel in self.wheels:
@@ -34,7 +39,8 @@ class Car:
     def _render_body(self, game: GameBase):
         for fixture in self.body.fixtures:
             vertices = [(self.body.transform * v) * PPM for v in fixture.shape.vertices]
-            game.draw_polygon(Car.BODY_COLOR, vertices)
+            body_color = pygame.Color(30, 30, 230 - int(self.body_density * 200), 255)
+            game.draw_polygon(body_color, vertices)
             for fixture in self.body.fixtures:
                 vertices = [(self.body.transform * v) * PPM for v in fixture.shape.vertices]
                 for v in vertices:
@@ -46,7 +52,10 @@ class Car:
             radius = int(wheel.fixtures[0].shape.radius * PPM)
             dir_vec = Vector2(0, radius).rotate(math.degrees(wheel.angle))
             
-            game.draw_circle(Car.WHEEL_COLOR, center, radius)
+            wheel_color = pygame.Color(255 - int(self.wheel_density * 200),
+                                       255 - int(self.wheel_density * 200),
+                                       0, 255)
+            game.draw_circle(wheel_color, center, radius)
             game.draw_line(Car.WHEEL_LINE_COLOR, center, center + dir_vec, width=2)
         
     @property
