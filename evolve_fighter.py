@@ -1,5 +1,6 @@
 import pygame
 import numpy as np
+from copy import deepcopy
 
 from collections import deque
 from pygame import Vector2
@@ -22,6 +23,9 @@ class CarFightEvolutionRenderer(GameBase):
         self.initialize_fight()
         self.move_camera((-screen_width//2,0)) # Center the fight
         self.font = pygame.font.SysFont("Arial" , 18 , bold = True)
+        self.left_wins = 0
+        self.right_wins = 0
+        self.draws = 0
 
     def initialize_fight(self):
         self.fight_type = "elite"
@@ -46,8 +50,11 @@ class CarFightEvolutionRenderer(GameBase):
             for _ in range(10):
                 self.evolver.evolve_new_genome_left()
                 self.evolver.evolve_new_genome_right()
-            self.evolver.evaluate_all_vs_n(n=2)
-                
+            left_wins, right_wins, draws = self.evolver.evaluate_all_vs_n(n=2)
+            self.left_wins += left_wins
+            self.right_wins += right_wins
+            self.draws += draws
+
             self.initialize_fight()
         
         self._move_camera()
@@ -88,6 +95,8 @@ class CarFightEvolutionRenderer(GameBase):
         self._blit_centered_text(fight_type, Vector2(self.screen_width // 2, 38))
         fight_type = self.font.render(f"Step: {self.evolver.steps}", 1, pygame.Color("BLACK"))
         self._blit_centered_text(fight_type, Vector2(self.screen_width // 2, 38 + 18))
+        wins_count = self.font.render(f"L: {self.left_wins}, R: {self.right_wins}, D: {self.draws}", 1, pygame.Color("BLACK"))
+        self._blit_centered_text(wins_count, Vector2(self.screen_width // 2, 38 + 18*2))
         
     def _render_stats(self, genome, start_pos, color):
         stats = [
@@ -131,10 +140,11 @@ class FighterEvolver:
             population_size=POPULATION_SIZE,
             genome_fn=lambda: FighterGenome(body_vertices=NUM_VERTICES)
         )
-        self.population_right = Population(
-            population_size=POPULATION_SIZE,
-            genome_fn=lambda: FighterGenome(body_vertices=NUM_VERTICES)
-        )
+        # self.population_right = Population(
+        #     population_size=POPULATION_SIZE,
+        #     genome_fn=lambda: FighterGenome(body_vertices=NUM_VERTICES)
+        # )
+        self.population_right = deepcopy(self.population_left)
         
         self.steps = 0
         
@@ -155,7 +165,7 @@ class FighterEvolver:
         # Evaluate genome
         for i in range(num_evaluations):
             opponent = self._find_fair_opponent(child, self.population_right)
-            self.evaluate_matchup(child, opponent)
+            _, _, _ = self.evaluate_matchup(child, opponent)
             
         self.steps +=1
     
@@ -171,7 +181,7 @@ class FighterEvolver:
         # Evaluate genome
         for i in range(num_evaluations):
             opponent = self._find_fair_opponent(child, self.population_left)
-            self.evaluate_matchup(opponent, child)
+            _, _, _, = self.evaluate_matchup(opponent, child)
             
         self.steps += 1
     
@@ -193,7 +203,7 @@ class FighterEvolver:
     def evaluate_random_matches(self, n=20):
         for _ in range(n):
             left, right = self.get_fair_matchup()
-            self.evaluate_matchup(left, right)
+            _, _, _ = self.evaluate_matchup(left, right)
     
     def evaluate_all_vs_n(self, n=5):
         """
@@ -203,10 +213,20 @@ class FighterEvolver:
         """
         opponents = self.population_right.genomes * n
         np.random.shuffle(opponents)
+        left_wins = 0
+        right_wins = 0
+        draws = 0
         for i, genome in enumerate(self.population_left.genomes):
             matchups = opponents[i*n:i*n+n]
             for opponent in matchups:
-                self.evaluate_matchup(genome, opponent)
+                left_won, right_won, draw = self.evaluate_matchup(genome, opponent)
+                if left_won:
+                    left_wins += 1
+                elif right_won:
+                    right_wins += 1
+                elif draw:
+                    draws += 1
+        return left_wins, right_wins, draws
             
     def evaluate_matchup(self, genome_left, genome_right):
         world, tiles, car_left, car_right = self.create_arena(genome_left, genome_right)
@@ -238,6 +258,8 @@ class FighterEvolver:
             genome_right.rating, genome_left.rating = rate_1vs1(genome_right.rating, genome_left.rating)
             genome_left.losses += 1
             genome_right.wins += 1
+
+        return left_won, right_won, draw
     
     def create_arena(self, genome_left, genome_right):
         world = b2World(gravity=(0, 9.71), doSleep=True)
@@ -274,7 +296,7 @@ if __name__ == "__main__":
     POPULATION_SIZE = 100
 
     evolver = FighterEvolver(NUM_VERTICES, POPULATION_SIZE)
-    evolver.evaluate_all_vs_n(n=10)
+    _, _, _ = evolver.evaluate_all_vs_n(n=10)
 
     renderer = CarFightEvolutionRenderer(
         700,
