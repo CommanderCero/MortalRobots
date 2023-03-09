@@ -47,9 +47,12 @@ class CarFightEvolutionRenderer(GameBase):
 
     def fixed_step(self, delta_time):
         if self.num_steps == self.evolver.evaluation_steps:
-            for _ in range(10):
+            for _ in range(2):
                 self.evolver.evolve_new_genome_left()
                 self.evolver.evolve_new_genome_right()
+            
+                
+            #left_wins, right_wins, draws = self.evolver.evaluate_n_ranked_matches(n=2)
             left_wins, right_wins, draws = self.evolver.evaluate_all_vs_n(n=2)
             self.left_wins += left_wins
             self.right_wins += right_wins
@@ -204,6 +207,32 @@ class FighterEvolver:
         for _ in range(n):
             left, right = self.get_fair_matchup()
             _, _, _ = self.evaluate_matchup(left, right)
+    
+    def evaluate_n_ranked_matches(self, n=1):
+        left_wins = 0
+        right_wins = 0
+        draws = 0
+        for _ in range(n):
+            for genome in self.population_left.genomes:
+                opponent = self._find_fair_opponent(genome, self.population_right)
+                left_won, right_won, draw = self.evaluate_matchup(genome, opponent)
+                if left_won:
+                    left_wins += 1
+                elif right_won:
+                    right_wins += 1
+                elif draw:
+                    draws += 1
+                
+            for genome in self.population_right.genomes:
+                opponent = self._find_fair_opponent(genome, self.population_left)
+                left_won, right_won, draw = self.evaluate_matchup(opponent, genome)
+                if left_won:
+                    left_wins += 1
+                elif right_won:
+                    right_wins += 1
+                elif draw:
+                    draws += 1
+        return (left_wins, right_wins, draws)
     
     def evaluate_all_vs_n(self, n=5):
         """
