@@ -5,7 +5,7 @@ from collections import deque
 from pygame import Vector2
 from game_base import GameBase
 from Box2D import b2World, b2PolygonShape, b2BodyDef, b2Vec2, b2FixtureDef
-from constants import PPM
+from constants import PPM, LEFT_MUTATION_RATE, RIGHT_MUTATION_RATE
 from population import Population
 from genomes import FighterGenome
 from evolve_car import CarEvolutionRenderer, generate_next_generation, create_floor
@@ -148,7 +148,7 @@ class FighterEvolver:
         
         # Generate a new child
         child, = self.population_left.roulette_wheel_crossover(num_children=1)
-        child.mutate()
+        child.mutate(LEFT_MUTATION_RATE)
         self._init_genome(child)
         # Add to population
         self.population_left.replace_weak_genome(child)
@@ -164,7 +164,7 @@ class FighterEvolver:
         
         # Generate a new child
         child, = self.population_right.roulette_wheel_crossover(num_children=1)
-        child.mutate()
+        child.mutate(RIGHT_MUTATION_RATE)
         self._init_genome(child)
         # Add to population
         self.population_right.replace_weak_genome(child)

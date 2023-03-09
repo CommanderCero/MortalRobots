@@ -18,8 +18,7 @@ class CarGenome:
         self.wheel_motor_speed = 10.0
         self.fitness = 0
 
-    def mutate(self):
-        mutation_rate = 0.1
+    def mutate(self, mutation_rate=0.1):
         mag_indices = np.where(np.random.uniform(0, 1, size=len(self.magnitudes)) < mutation_rate)
         angle_indices = np.where(np.random.uniform(0, 1, size=len(self.angles)) < mutation_rate)
         wheel_indices = np.where(np.random.uniform(0, 1, size=len(self.wheels_flags)) < mutation_rate)
@@ -138,8 +137,8 @@ class FighterGenome:
         self.wheel_motor_speed = 10.0
         self.fitness = 0
 
-    def mutate(self):
-        mutation_rate = 0.1
+    def mutate(self, mutation_rate=0.1):
+        
         mag_indices = np.where(np.random.uniform(0, 1, size=len(self.magnitudes)) < mutation_rate)
         angle_indices = np.where(np.random.uniform(0, 1, size=len(self.angles)) < mutation_rate)
         wheel_indices = np.where(np.random.uniform(0, 1, size=len(self.wheels_flags)) < mutation_rate)
