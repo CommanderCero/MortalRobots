@@ -26,8 +26,8 @@ class CarGenome:
 
         self.magnitudes[mag_indices] = np.random.uniform(0.1, 4, size=len(self.magnitudes[mag_indices]))
         self.angles[angle_indices] = np.random.uniform(0, 1, size=len(self.angles[angle_indices]))
-        self.wheels_flags[wheel_indices] = np.random.randint(0, 2, size=len(self.wheels_flags[wheel_indices]))
-        self.wheel_size[indices] = np.random.randint(0.1, 1.5, size=len(self.wheel_size[indices]))
+        self.wheels_flags[wheel_indices] = ~self.wheels_flags[wheel_indices]
+        self.wheel_size[indices] = np.random.uniform(0.1, 1.5, size=len(self.wheel_size[indices]))
 
     def crossover(self, other: "CarGenome"):
         #t = np.random.uniform(0, 1)
@@ -147,7 +147,7 @@ class FighterGenome:
         self.magnitudes[mag_indices] = np.random.uniform(0.1, 4, size=len(self.magnitudes[mag_indices]))
         self.angles[angle_indices] = np.random.uniform(0, 1, size=len(self.angles[angle_indices]))
         self.wheels_flags[wheel_indices] = np.random.randint(0, 2, size=len(self.wheels_flags[wheel_indices]))
-        self.wheel_size[indices] = np.random.randint(0.1, 1.5, size=len(self.wheel_size[indices]))
+        self.wheel_size[indices] = np.random.uniform(0.1, 1.5, size=len(self.wheel_size[indices]))
 
         if np.random.uniform(0, 1) < mutation_rate:
             self.body_density = np.random.uniform(self.min_body_density, self.max_body_density)

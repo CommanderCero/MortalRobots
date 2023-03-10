@@ -47,7 +47,7 @@ class CarFightEvolutionRenderer(GameBase):
 
     def fixed_step(self, delta_time):
         if self.num_steps == self.evolver.evaluation_steps:
-            for _ in range(2):
+            for _ in range(10):
                 self.evolver.evolve_new_genome_left()
                 self.evolver.evolve_new_genome_right()
             
@@ -143,11 +143,10 @@ class FighterEvolver:
             population_size=POPULATION_SIZE,
             genome_fn=lambda: FighterGenome(body_vertices=NUM_VERTICES)
         )
-        # self.population_right = Population(
-        #     population_size=POPULATION_SIZE,
-        #     genome_fn=lambda: FighterGenome(body_vertices=NUM_VERTICES)
-        # )
-        self.population_right = deepcopy(self.population_left)
+        self.population_right = Population(
+            population_size=POPULATION_SIZE,
+            genome_fn=lambda: FighterGenome(body_vertices=NUM_VERTICES)
+        )
         
         self.steps = 0
         
