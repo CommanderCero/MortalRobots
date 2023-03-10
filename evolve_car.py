@@ -78,14 +78,18 @@ class CarEvolutionRenderer(GameBase):
             self.cars.append(car)
     
     def _move_camera(self):
-        if pygame.key.get_pressed()[pygame.K_LEFT]:
-            self.move_camera(Vector2(-100, 0) )
-        if pygame.key.get_pressed()[pygame.K_RIGHT]:
-                self.move_camera(Vector2(100, 0))
-        if pygame.key.get_pressed()[pygame.K_UP]:
-            self.move_camera(Vector2(0, -100))
-        if pygame.key.get_pressed()[pygame.K_DOWN]:
-            self.move_camera(Vector2(0, 100))
+        best_car = max(self.cars, key=lambda x: x.position.x)
+        pos = best_car.position * PPM
+        self.camera_pos = Vector2(pos.x - self.screen_width // 2, pos.y - self.screen_height // 2)
+        
+        #if pygame.key.get_pressed()[pygame.K_LEFT]:
+        #    self.move_camera(Vector2(-100, 0) )
+        #if pygame.key.get_pressed()[pygame.K_RIGHT]:
+        #        self.move_camera(Vector2(100, 0))
+        #if pygame.key.get_pressed()[pygame.K_UP]:
+        #    self.move_camera(Vector2(0, -100))
+        #if pygame.key.get_pressed()[pygame.K_DOWN]:
+        #    self.move_camera(Vector2(0, 100))
 
     def _generate_next_generation(self):
         generate_next_generation(self.population)
@@ -131,7 +135,7 @@ class CarEvolutionRenderer(GameBase):
 
     def render_cars(self):
         # Draw the cars from each world, sorted by fitness
-        sorted_cars = list(sorted(self.cars, key=lambda x: x.position.x))
+        sorted_cars = list(sorted(self.cars, key=lambda x: x.position.x, reverse=True))
         for car in [*sorted_cars[:3], *self.cars[:7]]:
             car.render(self)
 
@@ -169,26 +173,10 @@ if __name__ == "__main__":
     NUM_VERTICES = 10
     POPULATION_SIZE = 100
 
-    # car_population = Population(
-    #     population_size=POPULATION_SIZE,
-    #     genome_fn=lambda: CarGenome(body_vertices=NUM_VERTICES)
-    # )
-
-    # renderer = CarEvolutionRenderer(640, 640, car_population)
-
-    car_population_left = Population(
+    car_population = Population(
         population_size=POPULATION_SIZE,
-        genome_fn=lambda: CarGenome(body_vertices=NUM_VERTICES)
+        genome_fn=lambda: CarGenome(body_vertices=NUM_VERTICES,)
     )
-    car_population_right = Population(
-        population_size=POPULATION_SIZE,
-        genome_fn=lambda: CarGenome(body_vertices=NUM_VERTICES)
-    )
-
-    renderer = CarFightEvolutionRenderer(
-        700,
-        640,
-        car_population_left, car_population_right
-    )
+    renderer = CarEvolutionRenderer(640, 640, car_population)
 
     renderer.run()

@@ -19,8 +19,8 @@ class Car:
             body,
             wheels,
             wheel_motor_speed,
-            body_density,
-            wheel_density,
+            body_density=0.5,
+            wheel_density=0.5,
         ):
         self.body = body
         self.wheels = wheels
